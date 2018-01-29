@@ -3,8 +3,8 @@ Lamborghini Reventon Tachometer for Assetto Corsa
 
 ## Screenshots and Video
 
-![screenshot](https://i.imgur.com/CvUAOzA.jpg)
-[![youtube](https://i.imgur.com/tLQJtjj.png)](https://www.youtube.com/watch?v=a0fESLSw3-o)]
+![screenshot](https://i.imgur.com/Yu5kIEB.png)
+[![youtube](https://i.imgur.com/tLQJtjj.png)](https://www.youtube.com/watch?v=u1-ufy15Hos)]
 
 ## Installation
 
