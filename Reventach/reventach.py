@@ -6,6 +6,9 @@
 #
 # V1.0  - Initial version
 #
+# V1.1	- Looks more like the real one.
+#       - Colored bars, dashed RPM, redline
+#
 #############################################################
 
 import ac
@@ -53,7 +56,7 @@ def acMain(ac_version):
 
 	y = appHeight - PxPer1000RPM * RPMdivs
 	count = RPMdivs
-	while y > 0:
+	while y > -1:
 		dx = (appHeight - y) / lineSlope
 		Labels["rpmL" + str(count)] = ac.addLabel(appWindow, str(count))
 		ac.setPosition(Labels["rpmL" + str(count)], dx - fontSize, y - fontSize/2)
@@ -63,6 +66,11 @@ def acMain(ac_version):
 		ac.setPosition(Labels["rpmR" + str(count)], appWidth - dx + fontSize, y - fontSize/2)
 		ac.setFontSize(Labels["rpmR" + str(count)], fontSize)
 		ac.setFontAlignment(Labels["rpmR" + str(count)], "center")
+
+		if y < PxPer1000RPM * RPMdivs - 1:
+			ac.setFontColor(Labels["rpmL" + str(count)], 0.7, 0.0, 0.0, 0.9)
+			ac.setFontColor(Labels["rpmR" + str(count)], 0.7, 0.0, 0.0, 0.9)
+
 		y -= (PxPer1000RPM * RPMdivs)
 		count += RPMdivs
 
@@ -80,14 +88,6 @@ def acMain(ac_version):
 
 	ac.addRenderCallback(appWindow, onFormRender)
 	return "Reventach"
-
-
-#~ def drawDashedRPM(x1, y1, x2, y2, width, dashLength, dashGap):
-	#~ ac.glBegin(acsys.GL.Quads)
-	#~ for y in range(y1, y2, dashLength + dashGap):
-		#~ x = x1 + (y / lineSlope)
-		#~ ac.glVertex2f(x, y)
-		#~ ac.glVertex2f(x + width, y)
 
 
 def onFormRender(deltaT):
@@ -135,13 +135,13 @@ def onFormRender(deltaT):
 
 	# red RPM x1000 ticks
 	y = appHeight
-	while y > 0:
+	while y > -1:
 		dx = (appHeight - y) / lineSlope
 		ac.glQuad(dx, y, hBarWidth, lineWidth)
 		ac.glQuad(appWidth - dx - hBarWidth, y, hBarWidth, lineWidth)
 		y -= (PxPer1000RPM * RPMdivs)
 
-	# green diagonals
+	# red/green diagonal quads
 	ac.glColor4f(0.0, 0.9, 0.0, 0.9)
 	topY = appHeight - (PxPer1000RPM * RPMdivs) + doubleWidth
 	botY = appHeight - lineWidth
@@ -153,8 +153,8 @@ def onFormRender(deltaT):
 			y = rpmY # current rpm bar
 		else:
 			y = topY # rest of the lower rpm bars
-		dxt = (appHeight - y + lineWidth) / lineSlope + doubleWidth
-		dxb = (appHeight - botY + lineWidth * 2) / lineSlope + doubleWidth
+		dxt = (appHeight - y + doubleWidth) / lineSlope + doubleWidth
+		dxb = (appHeight - botY + doubleWidth) / lineSlope + doubleWidth
 
 		ac.glBegin(acsys.GL.Quads)
 		ac.glVertex2f(dxb, botY)
@@ -237,8 +237,6 @@ def loadCarData():
 
 			except (OSError, KeyError) as e:
 				ac.log("Reventach ERROR: loadCarData: No custom car data found for this car")
-				#~ CarData["totalGears"] = 6
-				#~ CarData["maxRPM"] = 10000
 
 			else:
 				ac.console("Custom car data found for " + carName)
