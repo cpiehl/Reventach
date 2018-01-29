@@ -14,7 +14,7 @@ import json
 import os
 
 appHeight = 200
-appWidth = 200
+appWidth = 250
 lineSlope = 3
 fontSize = 0
 gearSpacing = 0
@@ -27,13 +27,13 @@ CarData = {
 	"totalGears": 6
 }
 gears = ["N", "R"]
-maxRPM = 0
-maxGear = 0
+PxPer1000RPM = 1
+RPMdivs = 1
 
 # This function gets called by AC when the Plugin is initialised
 # The function has to return a string with the plugin name
 def acMain(ac_version):
-	global appWindow, Labels, gearSpacing, fontSize, gears
+	global appWindow, Labels, gearSpacing, fontSize, gears, PxPer1000RPM, RPMdivs
 	appWindow = ac.newApp("Reventach")
 	ac.setSize(appWindow, appWidth, appHeight)
 	ac.drawBorder(appWindow, 0)
@@ -46,6 +46,25 @@ def acMain(ac_version):
 	ac.addOnAppDismissedListener(appWindow, onAppDismissed)
 
 	loadCarData()
+	PxPer1000RPM = 1000 * appHeight / CarData["maxRPM"]
+	RPMdivs = CarData["maxRPM"] // 10000 + 1
+	#~ fontSize = PxPer1000RPM * 0.5 * RPMdivs
+	fontSize = appHeight / 15
+
+	y = appHeight - PxPer1000RPM * RPMdivs
+	count = RPMdivs
+	while y > 0:
+		dx = (appHeight - y) / lineSlope
+		Labels["rpmL" + str(count)] = ac.addLabel(appWindow, str(count))
+		ac.setPosition(Labels["rpmL" + str(count)], dx - fontSize, y - fontSize/2)
+		ac.setFontSize(Labels["rpmL" + str(count)], fontSize)
+		ac.setFontAlignment(Labels["rpmL" + str(count)], "center")
+		Labels["rpmR" + str(count)] = ac.addLabel(appWindow, str(count))
+		ac.setPosition(Labels["rpmR" + str(count)], appWidth - dx + fontSize, y - fontSize/2)
+		ac.setFontSize(Labels["rpmR" + str(count)], fontSize)
+		ac.setFontAlignment(Labels["rpmR" + str(count)], "center")
+		y -= (PxPer1000RPM * RPMdivs)
+		count += RPMdivs
 
 	for n in range(CarData["totalGears"]):
 		gears.insert(0, str(n + 1))
@@ -55,12 +74,20 @@ def acMain(ac_version):
 
 	for n,c in enumerate(gears):
 		Labels["gear" + c] = ac.addLabel(appWindow, c)
-		ac.setPosition(Labels["gear" + c], 100, (n * gearSpacing))
+		ac.setPosition(Labels["gear" + c], appWidth/2, (n * gearSpacing))
 		ac.setFontSize(Labels["gear" + c], fontSize)
 		ac.setFontAlignment(Labels["gear" + c], "center")
 
 	ac.addRenderCallback(appWindow, onFormRender)
 	return "Reventach"
+
+
+#~ def drawDashedRPM(x1, y1, x2, y2, width, dashLength, dashGap):
+	#~ ac.glBegin(acsys.GL.Quads)
+	#~ for y in range(y1, y2, dashLength + dashGap):
+		#~ x = x1 + (y / lineSlope)
+		#~ ac.glVertex2f(x, y)
+		#~ ac.glVertex2f(x + width, y)
 
 
 def onFormRender(deltaT):
@@ -72,14 +99,17 @@ def onFormRender(deltaT):
 	gear = ac.getCarState(0, acsys.CS.Gear)
 	rpm = ac.getCarState(0, acsys.CS.RPM)
 
+	hBarWidth = appWidth * 0.04
+	lineWidth = appWidth * 0.01
+	doubleWidth = lineWidth * 2
+	halfWidth = lineWidth / 2
+
 	gearY = appHeight - (gear * gearSpacing)
 	rpmY = appHeight * (rpm / CarData["maxRPM"])
 	rpmX = rpmY / lineSlope
-	rpmXL = (appWidth * 0.02) + rpmX
-	rpmXR = (appWidth * 0.98) - rpmX
+	rpmXL = doubleWidth + rpmX
+	rpmXR = (appWidth - doubleWidth) - rpmX
 	rpmY = appHeight - rpmY
-
-	hBarWidth = appWidth * 0.04
 
 	centerX = appWidth / 2
 	centerY = gearY - fontSize / 2
@@ -87,53 +117,96 @@ def onFormRender(deltaT):
 	r = centerX + fontSize / 2
 	t = gearY - fontSize
 
-	ac.glBegin(acsys.GL.Lines)
+	ac.glColor4f(0.7, 0.0, 0.0, 0.9)
+	ac.glBegin(acsys.GL.Quads)
 
-	ac.glColor4f(0.9, 0.9, 0.9, 0.9)
-
-	# white selected gear box
-	ac.glVertex2f(l, gearY)
-	ac.glVertex2f(r, gearY)
-	ac.glVertex2f(r, gearY)
-	ac.glVertex2f(r, t)
-	ac.glVertex2f(r, t)
-	ac.glVertex2f(l, t)
-	ac.glVertex2f(l, t)
-	ac.glVertex2f(l, gearY)
-
-	# white diagonals
+	# red diagonals
 	ac.glVertex2f(0, appHeight)
+	ac.glVertex2f(lineWidth, appHeight)
+	ac.glVertex2f(appHeight/lineSlope + lineWidth, 0)
 	ac.glVertex2f(appHeight/lineSlope, 0)
+
+	ac.glVertex2f(appWidth - lineWidth, appHeight)
 	ac.glVertex2f(appWidth, appHeight)
 	ac.glVertex2f(appWidth - (appHeight/lineSlope), 0)
-
-	ac.glColor4f(0.0, 0.9, 0.0, 0.9)
-
-	# green diagonals
-	ac.glVertex2f(appWidth * 0.02, appHeight)
-	ac.glVertex2f(rpmXL, rpmY)
-	ac.glVertex2f(appWidth * 0.98, appHeight)
-	ac.glVertex2f(rpmXR, rpmY)
-
-	# green horizontal rpms
-	ac.glVertex2f(rpmXL, rpmY)
-	ac.glVertex2f(rpmXL + hBarWidth, rpmY)
-	ac.glVertex2f(rpmXR, rpmY)
-	ac.glVertex2f(rpmXR - hBarWidth, rpmY)
-
-	# green horizontal selected gear
-	ac.glVertex2f(l, centerY)
-	ac.glVertex2f(l - hBarWidth, centerY)
-	ac.glVertex2f(r, centerY)
-	ac.glVertex2f(r + hBarWidth, centerY)
-
-	# green back to selected gear
-	ac.glVertex2f(rpmXL + hBarWidth, rpmY)
-	ac.glVertex2f(l - hBarWidth, centerY)
-	ac.glVertex2f(rpmXR - hBarWidth, rpmY)
-	ac.glVertex2f(r + hBarWidth, centerY)
+	ac.glVertex2f(appWidth - lineWidth - (appHeight/lineSlope), 0)
 
 	ac.glEnd()
+
+	# red RPM x1000 ticks
+	y = appHeight
+	while y > 0:
+		dx = (appHeight - y) / lineSlope
+		ac.glQuad(dx, y, hBarWidth, lineWidth)
+		ac.glQuad(appWidth - dx - hBarWidth, y, hBarWidth, lineWidth)
+		y -= (PxPer1000RPM * RPMdivs)
+
+	# green diagonals
+	ac.glColor4f(0.0, 0.9, 0.0, 0.9)
+	topY = appHeight - (PxPer1000RPM * RPMdivs) + doubleWidth
+	botY = appHeight - lineWidth
+	while botY > 0:
+		if topY < (PxPer1000RPM * RPMdivs):
+			ac.glColor4f(0.7, 0.0, 0.0, 0.9)
+			y = max(0, topY) # redline bars
+		elif topY < rpmY:
+			y = rpmY # current rpm bar
+		else:
+			y = topY # rest of the lower rpm bars
+		dxt = (appHeight - y + lineWidth) / lineSlope + doubleWidth
+		dxb = (appHeight - botY + lineWidth * 2) / lineSlope + doubleWidth
+
+		ac.glBegin(acsys.GL.Quads)
+		ac.glVertex2f(dxb, botY)
+		ac.glVertex2f(dxb + lineWidth * 3, botY)
+		ac.glVertex2f(dxt + lineWidth * 3, y)
+		ac.glVertex2f(dxt, y)
+
+		ac.glVertex2f(appWidth - dxb - lineWidth * 3, botY)
+		ac.glVertex2f(appWidth - dxb, botY)
+		ac.glVertex2f(appWidth - dxt, y)
+		ac.glVertex2f(appWidth - dxt - lineWidth * 3, y)
+
+		ac.glEnd()
+
+		botY = topY - lineWidth * 3
+		topY -= (PxPer1000RPM * RPMdivs)
+
+
+	# white boxes around gears
+	for g in range(CarData["totalGears"] + 2):
+		if g == gear:
+			ac.glColor4f(0.0, 0.9, 0.0, 0.9)
+			lw = lineWidth
+		else:
+			ac.glColor4f(0.9, 0.9, 0.9, 0.9)
+			lw = halfWidth
+		gy = appHeight - (g * gearSpacing)
+		gt = gy - fontSize
+		ac.glQuad(l - lw, gy, fontSize + (lw * 2), lw) # bot
+		ac.glQuad(r, gt, lw, fontSize) # right
+		ac.glQuad(l - lw, gt - lw, fontSize + (lw * 2), lw) # top
+		ac.glQuad(l - lw, gt, lw, fontSize) # left
+
+	ac.glColor4f(0.9, 0.9, 0.9, 0.9)
+	ac.glBegin(acsys.GL.Lines)
+
+	# white diagonal back to selected gear
+	ac.glVertex2f(rpmXL + hBarWidth + lineWidth, rpmY)
+	ac.glVertex2f(l - hBarWidth - lineWidth, centerY)
+	ac.glVertex2f(rpmXR - hBarWidth - lineWidth, rpmY)
+	ac.glVertex2f(r + hBarWidth + lineWidth, centerY)
+
+	ac.glEnd()
+
+	ac.glColor4f(0.9, 0.9, 0.9, 0.9)
+	# white horizontal rpms
+	ac.glQuad(rpmXL + lineWidth, rpmY - halfWidth, hBarWidth, lineWidth)
+	ac.glQuad(rpmXR - hBarWidth - lineWidth, rpmY - halfWidth, hBarWidth, lineWidth)
+
+	# white horizontal selected gear
+	ac.glQuad(l - hBarWidth - lineWidth, centerY - halfWidth, hBarWidth, lineWidth)
+	ac.glQuad(r + lineWidth, centerY - halfWidth, hBarWidth, lineWidth)
 
 
 def loadCarData():
@@ -164,8 +237,8 @@ def loadCarData():
 
 			except (OSError, KeyError) as e:
 				ac.log("Reventach ERROR: loadCarData: No custom car data found for this car")
-				CarData["totalGears"] = 6
-				CarData["maxRPM"] = 10000
+				#~ CarData["totalGears"] = 6
+				#~ CarData["maxRPM"] = 10000
 
 			else:
 				ac.console("Custom car data found for " + carName)
